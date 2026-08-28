@@ -17,13 +17,28 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+from typing import Any
 
 import httpx
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
+from mcp.types import TextContent
 
 SERVER_URL = os.environ.get("MCP_SERVER_URL", "http://localhost:8080/mcp")
 VALID_TOKEN = os.environ.get("MCP_AUTH_TOKEN", "secret-token-123")
+
+
+def format_mcp_content(content_items: list[Any]) -> str:
+    """Helper định dạng text content từ phản hồi của MCP tool an toàn theo type checker."""
+    texts: list[str] = []
+    for item in content_items:
+        if isinstance(item, TextContent):
+            texts.append(item.text)
+        elif hasattr(item, "text"):
+            texts.append(str(getattr(item, "text")))
+        else:
+            texts.append(str(item))
+    return "\n".join(texts)
 
 
 async def run_client_demo() -> None:
@@ -36,14 +51,16 @@ async def run_client_demo() -> None:
     http_client = httpx.AsyncClient(headers={"Authorization": f"Bearer {VALID_TOKEN}"})
 
     async with http_client:
-        async with streamable_http_client(SERVER_URL, http_client=http_client) as (read, write):
-            async with ClientSession(read, write) as session:
+        async with streamable_http_client(SERVER_URL, http_client=http_client) as streams:
+            read_stream = streams[0]
+            write_stream = streams[1]
+            async with ClientSession(read_stream, write_stream) as session:
                 await session.initialize()
                 print("✅ Khởi tạo session MCP thành công!")
 
                 # Khám phá tools
-                tools = await session.list_tools()
-                available_tools = {t.name: t.description for t in tools.tools}
+                tools_response = await session.list_tools()
+                available_tools = {t.name: t.description for t in tools_response.tools}
                 print(f"\n📋 Danh sách {len(available_tools)} công cụ server công bố:")
                 for name, desc in available_tools.items():
                     print(f"  • {name}: {desc}")
@@ -52,7 +69,9 @@ async def run_client_demo() -> None:
                 print("\n[2] Đọc Resource `server://info` để kiểm tra versioning...")
                 try:
                     info_resource = await session.read_resource("server://info")
-                    server_metadata = json.loads(info_resource.contents[0].text)
+                    first_item = info_resource.contents[0]
+                    raw_text = getattr(first_item, "text", str(first_item))
+                    server_metadata = json.loads(raw_text)
                     print(f"  Version Server: {server_metadata.get('version')}")
                     print(f"  Migration Guide: {server_metadata.get('migration_guide')}")
                 except Exception as e:
@@ -66,18 +85,18 @@ async def run_client_demo() -> None:
                     print(f"  -> Server hỗ trợ get_order_v2, ưu tiên gọi v2 cho đơn {order_id}...")
                     res = await session.call_tool("get_order_v2", {"order_id": order_id, "include_items": True})
                     print("  Kết quả (v2 - Full details):")
-                    print(" ", res.content[0].text)
+                    print(" ", format_mcp_content(res.content))
                 else:
                     print(f"  -> Fallback: Gọi get_order (v1) cho đơn {order_id}...")
                     res = await session.call_tool("get_order", {"order_id": order_id})
                     print("  Kết quả (v1 - Basic status):")
-                    print(" ", res.content[0].text)
+                    print(" ", format_mcp_content(res.content))
 
                 # 4. GỌI TOOL TÌM KIẾM
                 print("\n[4] Gọi tool search_orders(status='shipping'):")
                 search_res = await session.call_tool("search_orders", {"status": "shipping"})
                 print("  Kết quả tìm kiếm:")
-                print(" ", search_res.content[0].text)
+                print(" ", format_mcp_content(search_res.content))
 
     # 5. KIỂM THỬ BẢO MẬT (AUTHENTICATION TEST)
     print("\n" + "=" * 60)
@@ -88,22 +107,22 @@ async def run_client_demo() -> None:
     print("\n[A] Thử kết nối KHÔNG CÓ TOKEN:")
     async with httpx.AsyncClient() as no_auth_client:
         try:
-            async with streamable_http_client(SERVER_URL, http_client=no_auth_client) as (read, write):
-                async with ClientSession(read, write) as session:
+            async with streamable_http_client(SERVER_URL, http_client=no_auth_client) as streams:
+                async with ClientSession(streams[0], streams[1]) as session:
                     await session.initialize()
                     print("  ❌ Lỗi: Kết nối thành công dù không có token!")
-        except Exception as e:
+        except Exception:
             print("  ✅ ĐÃ BỊ TỪ CHỐI THÀNH CÔNG (Không có token).")
 
     # Test token sai
     print("\n[B] Thử kết nối VỚI TOKEN SAI ('invalid-token-456'):")
     async with httpx.AsyncClient(headers={"Authorization": "Bearer invalid-token-456"}) as bad_auth_client:
         try:
-            async with streamable_http_client(SERVER_URL, http_client=bad_auth_client) as (read, write):
-                async with ClientSession(read, write) as session:
+            async with streamable_http_client(SERVER_URL, http_client=bad_auth_client) as streams:
+                async with ClientSession(streams[0], streams[1]) as session:
                     await session.initialize()
                     print("  ❌ Lỗi: Kết nối thành công dù token sai!")
-        except Exception as e:
+        except Exception:
             print("  ✅ ĐÃ BỊ TỪ CHỐI THÀNH CÔNG (Token sai).")
 
     print("\n" + "=" * 60)
