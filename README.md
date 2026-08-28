@@ -18,13 +18,24 @@ day26-mcp/
 │   ├── weather_server.py
 │   └── weather_client.py
 │
-└── 03-production/           ← Bước 3: Auth, Tool Registry, Versioning
+├── 03-production/           ← Bước 3: Auth, Tool Registry, Versioning
+│   ├── README.md
+│   ├── auth_server.py
+│   ├── auth_client.py
+│   ├── registry.json
+│   ├── registry_client.py
+│   └── versioned_server.py
+│
+├── 04-lab/                  ← Lab: Weather Agent với Google ADK & MCP Server
+│   ├── mcp-server/
+│   └── mcp-client/
+│
+└── my-mcp-server/           ← Lab bài tập cá nhân: Order Tracking MCP Server (Auth & Versioning)
     ├── README.md
-    ├── auth_server.py
-    ├── auth_client.py
-    ├── registry.json
-    ├── registry_client.py
-    └── versioned_server.py
+    ├── server.py
+    ├── client.py
+    ├── data/orders.json
+    └── requirements.txt
 ```
 
 ## Quick start
