@@ -1,0 +1,26 @@
+{
+  "ORD-001": {
+    "customer": "Nguyen Van A",
+    "items": ["Bàn phím cơ", "Chuột không dây"],
+    "total_price": 1500000,
+    "status": "shipping",
+    "updated_at": "2026-08-28T10:00:00",
+    "expected_delivery": "2026-08-30"
+  },
+  "ORD-002": {
+    "customer": "Tran Thi B",
+    "items": ["Màn hình 27 inch"],
+    "total_price": 4200000,
+    "status": "delivered",
+    "updated_at": "2026-08-25T14:30:00",
+    "expected_delivery": "2026-08-25"
+  },
+  "ORD-003": {
+    "customer": "Le Van C",
+    "items": ["Tai nghe Bluetooth"],
+    "total_price": 850000,
+    "status": "pending",
+    "updated_at": "2026-08-28T20:15:00",
+    "expected_delivery": "2026-09-02"
+  }
+}
